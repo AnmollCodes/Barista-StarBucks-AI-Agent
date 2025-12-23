@@ -1,0 +1,42 @@
+:root {
+  --bg-color: #0d1210;
+  --bg-secondary: #1a221f;
+  --primary: #00704a; /* Starbucks Green */
+  --primary-hover: #005c3d;
+  --accent: #d4b679; /* Gold */
+  --text-primary: #f1f1f1;
+  --text-secondary: #a0a0a0;
+  --bubble-user: #00704a;
+  --bubble-agent: #2c3330;
+  --border-color: #2c3330;
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  height: 100vh;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+}
+
+input, textarea {
+  font-family: inherit;
+}
