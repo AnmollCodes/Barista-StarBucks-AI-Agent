@@ -4,7 +4,7 @@
  * The agent is built using LangChain's LangGraph framework and interacts with a MongoDB database.
  */
 
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { Runnable } from '@langchain/core/runnables';
 
 import { tool } from '@langchain/core/tools';
