@@ -41,6 +41,7 @@ const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || '';
 
 @Injectable()
 export class ChatService implements OnModuleInit {
+  private readonly logger = new Logger(ChatService.name);
   private runnable: Runnable;
   private memorySaver: MemorySaver;
 
@@ -48,6 +49,10 @@ export class ChatService implements OnModuleInit {
 
   async onModuleInit() {
     this.memorySaver = new MemorySaver();
+
+    if (!process.env.GOOGLE_API_KEY) {
+      this.logger.error('GOOGLE_API_KEY is missing! The agent will fail.');
+    }
 
     // Define LangGraph state
     const graphState = Annotation.Root({
@@ -63,10 +68,10 @@ export class ChatService implements OnModuleInit {
       async ({ order }: { order: OrderType }) => {
         try {
           // Mock order creation for demo
-          console.log('Creating order in memory:', order);
+          this.logger.log(`Creating order in memory: ${JSON.stringify(order)}`);
           return 'Order created successfully (Demo Mode)';
         } catch (error) {
-          console.log(error);
+          this.logger.error('Failed to create order', error);
           return 'Failed to create the order';
         }
       },
@@ -139,6 +144,7 @@ export class ChatService implements OnModuleInit {
             - Be friendly, use emojis, and add humor.
             - Use null for unfilled fields.
             - Never omit the JSON tracking object.
+            - ALWAYS wrap your final JSON response in a \`\`\`json code block.
         `,
         },
         new MessagesPlaceholder('messages'),
@@ -196,28 +202,49 @@ export class ChatService implements OnModuleInit {
     thread_id: string;
     query: string;
   }) => {
-    /**
-     * Run the graph using the user's message.
-     */
-    const finalState = await this.runnable.invoke(
-      { messages: [new HumanMessage(query)] },
-      { recursionLimit: 15, configurable: { thread_id } },
-    );
+    this.logger.log(`Processing message for thread ${thread_id}: ${query}`);
 
-    /**
-     * Extract JSON payload from AI response.
-     */
-    function extractJsonResponse(response: any) {
-      console.log(response);
-      const match = response.match(/```json\s*([\s\S]*?)\s*```/i);
-      if (match && match[1] && typeof response === 'string') {
-        return JSON.parse(match[1].trim());
+    try {
+      const finalState = await this.runnable.invoke(
+        { messages: [new HumanMessage(query)] },
+        { recursionLimit: 15, configurable: { thread_id } },
+      );
+
+      const lastMessage = finalState.messages.at(-1) as AIMessage;
+      const content = lastMessage.content;
+
+      this.logger.debug(`Raw LLM Response: ${content}`);
+
+      // Try to extract JSON
+      try {
+        if (typeof content !== 'string') throw new Error("Response is valid");
+        const match = content.match(/```json\s*([\s\S]*?)\s*```/i);
+
+        if (match && match[1]) {
+          return JSON.parse(match[1].trim());
+        } else {
+          // Try parsing raw content if code blocks are missing
+          return JSON.parse(content.trim());
+        }
+      } catch (e) {
+        this.logger.warn('Failed to parse JSON from LLM response, returning fallback.', e);
+        // Return a safe fallback object so the frontend doesn't crash
+        return {
+          message: typeof content === 'string' ? content : "I processed your request.",
+          current_order: null,
+          suggestions: "Vanilla Latte, Iced Coffee, Cappuccino",
+          progress: "in_progress"
+        };
       }
-      throw response;
+    } catch (error) {
+      this.logger.error('Error during chat execution', error);
+      return {
+        message: "I'm having a little trouble connecting to the coffee machine (system error). Please try again in a moment!",
+        current_order: null,
+        suggestions: "Retry",
+        progress: "error"
+      };
     }
-
-    const lastMessage = finalState.messages.at(-1) as AIMessage;
-    return extractJsonResponse(lastMessage.content);
   };
 }
 
